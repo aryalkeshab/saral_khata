@@ -4,6 +4,8 @@ const app = express();
 require("dotenv/config");
 
 // Set up body parser middleware to parse JSON requests
+app.use(express.static("public"));
+
 app.use(express.json());
 
 // Connect to MongoDB
