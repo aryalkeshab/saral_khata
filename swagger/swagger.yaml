@@ -1,0 +1,103 @@
+openapi: 3.0.0
+info:
+  title: Your API
+  version: 1.0.0
+  description: API documentation for your Node.js application
+components:
+  securitySchemes:
+    BearerAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+  security:
+    - BearerAuth: []
+paths:
+  /auth/login:
+    post:
+      summary: Login to the application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+              required:
+                - name
+                - email
+      responses:
+        "200":
+          description: Logged in successfully
+
+  /auth/register:
+    post:
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                phone:
+                  type: string
+                address:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+              required:
+                - firstName
+                - email
+                - password
+                - phone
+                - address
+      responses:
+        "201":
+          description: User created successfully
+
+  /posts/:
+    get:
+      summary: Get all posts
+      parameters:
+        - name: q
+          in: query
+          description: Search query
+          schema:
+            type: string
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Posts retrieved successfully
+
+    post:
+      summary: Create a new post
+      security:
+        - BearerAuth:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+              required:
+                - title
+                - content
+      responses:
+        "201":
+          description: Post created successfully

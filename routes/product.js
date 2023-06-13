@@ -1,5 +1,4 @@
 const express = require("express");
-const jwt = require("jsonwebtoken");
 const Product = require("../models/product_model");
 const authenticateToken = require("../middleware/authenticateToken");
 const path = require("path");
@@ -61,6 +60,8 @@ router.post(
   upload.single("image"),
   async (req, res) => {
     console.log(req.body);
+    // unique item no based on the data in the product table
+    const itemNo = (await Product.countDocuments()) + 1;
 
     try {
       if (!req.file) {
@@ -70,10 +71,11 @@ router.post(
       const product = new Product({
         name: req.body.name,
         description: req.body.description,
-        price: req.body.price,
+        purchasePrice: req.body.purchasePrice,
         userId: req.userId,
-        offerPrice: req.body.offerPrice,
+        sellingPrice: req.body.sellingPrice,
         image: req.file.path,
+        itemNo: itemNo,
       });
       const savedProduct = await product.save();
       const data = {
@@ -81,9 +83,9 @@ router.post(
         data: savedProduct,
       };
       res.status(200).json(data);
-    } catch (error) {
-      console.log(error);
-      res.status(500).json({ error: "Error Occurred " });
+    } catch (error1) {
+      console.log(error1);
+      res.status(500).json({ error: error1 });
     }
   }
 );
