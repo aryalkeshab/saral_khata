@@ -2,15 +2,18 @@ const express = require("express");
 const authenticateToken = require("../middleware/authenticateToken");
 const Product = require("../models/product_model");
 const SalesOrder = require("../models/sales_model");
+const { parse } = require("path");
 
 const router = express.Router();
 
 // post a purchase order
 router.post("/", authenticateToken, async (req, res) => {
-  console.log(req.body);
+  // itemNo should be based on the  salesorderNo in the salesorder table
   const itemNo = (await SalesOrder.countDocuments()) + 1;
+
   let errorOccurred = false;
-  let tempTotalQuantity;
+  let seconderrorOccurred = false;
+
   try {
     const productList = await Product.find();
 
@@ -25,6 +28,7 @@ router.post("/", authenticateToken, async (req, res) => {
         errorOccurred = true;
       }
     });
+
     if (errorOccurred) {
       res.status(500).json({ error: "Product Not Found" });
       return;
@@ -35,7 +39,29 @@ router.post("/", authenticateToken, async (req, res) => {
       return acc + item.price * item.quantity;
     }, 0);
 
-    //  post a purchase order
+    // while posting a purchase order, the product quantity in the  product database should be added with the quantity in the purchase order
+    const promises = req.body.salesOrder.map(async (element) => {
+      const product = await Product.findOne({ itemNo: element.itemNo });
+      // show statut 500 with error if the quantity is less than 0 and tempTotalQuantity is less than 0
+
+      if (product.quantity == 0 || product.quantity - element.quantity < 0) {
+        return true; // Error occurred
+      } else {
+        product.quantity = product.quantity - element.quantity;
+        await product.save();
+        return false; // No error
+      }
+    });
+    const results = await Promise.all(promises);
+    const seconderrorOccurred = results.includes(true);
+
+    console.log(seconderrorOccurred);
+    if (seconderrorOccurred) {
+      res.status(500).json({ error: "Quantity Exceeded" });
+      return;
+    }
+
+    //  post a Sales order
     const salesOrder = new SalesOrder({
       name: req.body.name,
       remarks: req.body.remarks,
@@ -46,24 +72,7 @@ router.post("/", authenticateToken, async (req, res) => {
       totalOrder: totalOrder,
     });
     const savedSelesrder = await salesOrder.save();
-    // while posting a purchase order, the product quantity in the  product database should be added with the quantity in the purchase order
-    req.body.salesOrder.forEach(async (element) => {
-      const product = await Product.findOne({ itemNo: element.itemNo });
 
-      const tempTotalQuantity = product.quantity - element.quantity;
-
-      if (tempTotalQuantity < 0) {
-        errorOccurred = true;
-      }
-
-      product.quantity = tempTotalQuantity;
-
-      await product.save();
-    });
-    if (errorOccurred) {
-      res.status(500).json({ error: "Quantity Exceeded" });
-      return;
-    }
     console.log(savedSelesrder);
     const data = {
       success: true,
@@ -73,6 +82,36 @@ router.post("/", authenticateToken, async (req, res) => {
   } catch (error1) {
     console.log(error1);
     res.status(500).json({ error: "Something Went Wrong ! " + error1 });
+  }
+});
+router.get("/", authenticateToken, async (req, res) => {
+  try {
+    const query = req.query.q;
+    if (query == null || query == "" || query == undefined) {
+      const salesOrder = await SalesOrder.find({ userId: req.userId });
+      const data = {
+        success: true,
+        data: salesOrder,
+      };
+      res.status(200).json(data);
+      return;
+    }
+    let salesOrderNo;
+    if (!isNaN(query)) {
+      salesOrderNo = parseInt(query);
+    }
+
+    const condition = {
+      $or: [{ name: { $regex: query, $options: "i" } }, { salesOrderNo }],
+    };
+    const salesOrder = await SalesOrder.find(condition);
+    const data = {
+      success: true,
+      data: salesOrder,
+    };
+    res.status(200).json(data);
+  } catch (error) {
+    res.status(500).json({ error: "Something Went Wrong ! " + error });
   }
 });
 

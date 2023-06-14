@@ -63,5 +63,35 @@ router.post("/", authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Something Went Wrong ! " + error1 });
   }
 });
+router.get("/", authenticateToken, async (req, res) => {
+  try {
+    const query = req.query.q;
+    if (query == null || query == "" || query == undefined) {
+      const purchaseOrder = await PurchaseOrder.find({ userId: req.userId });
+      const data = {
+        success: true,
+        data: purchaseOrder,
+      };
+      res.status(200).json(data);
+      return;
+    }
+    let purchaseOrderNo;
+    if (!isNaN(query)) {
+      purchaseOrderNo = parseInt(query);
+    }
+
+    const condition = {
+      $or: [{ name: { $regex: query, $options: "i" } }, { purchaseOrderNo }],
+    };
+    const purchaseOrder = await PurchaseOrder.find(condition);
+    const data = {
+      success: true,
+      data: purchaseOrder,
+    };
+    res.status(200).json(data);
+  } catch (error) {
+    res.status(500).json({ error: "Something Went Wrong ! " + error });
+  }
+});
 
 module.exports = router;
